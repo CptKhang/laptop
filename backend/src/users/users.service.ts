@@ -1,30 +1,24 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { Role } from "@prisma/client";
+import { UpdateProfileDto } from "./dto/update-profile.dto";
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  // Tìm user theo email
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
-      where: {
-        email,
-      },
+      where: { email },
     });
   }
 
-  // Tìm user theo id
   async findById(id: number) {
     return this.prisma.user.findUnique({
-      where: {
-        id,
-      },
+      where: { id },
     });
   }
 
-  // Tạo user mới
   async createUser(data: {
     fullName: string;
     email: string;
@@ -45,7 +39,6 @@ export class UsersService {
     });
   }
 
-  // Cập nhật user
   async updateUser(id: number, data: any) {
     return this.prisma.user.update({
       where: { id },
@@ -53,10 +46,39 @@ export class UsersService {
     });
   }
 
-  // Xóa user
   async deleteUser(id: number) {
     return this.prisma.user.delete({
       where: { id },
+    });
+  }
+
+  async findAll() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        address: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async updateProfile(id: number, dto: UpdateProfileDto) {
+    return this.prisma.user.update({
+      where: { id },
+      data: dto,
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        address: true,
+        role: true,
+      },
     });
   }
 }

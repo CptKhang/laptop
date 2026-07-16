@@ -8,6 +8,6 @@ export class PrismaService
 {
   async onModuleInit() {
     await this.$connect();
-    console.log("✅ PostgreSQL Connected");
+    console.log("✅ MySQL Connected");
   }
 }
