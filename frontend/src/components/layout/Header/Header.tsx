@@ -7,12 +7,12 @@ const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-3">
 
         {/* Logo */}
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 hover:opacity-90 transition">
           <div className="w-10 h-10 bg-blue-600 rounded-lg"></div>
           <h1 className="text-xl font-bold text-blue-600">
             TechBlue Laptop
           </h1>
-        </div>
+        </Link>
 
         {/* Search */}
         <div className="flex-1 mx-6">
@@ -25,22 +25,22 @@ const Header: React.FC = () => {
 
         {/* Menu */}
         <nav className="hidden md:flex items-center gap-6 text-gray-700 font-medium">
-          <Link to="#" className="hover:text-blue-600">Gaming</Link>
-          <Link to="#" className="hover:text-blue-600">Văn phòng</Link>
-          <Link to="#" className="hover:text-blue-600">Sinh viên</Link>
-          <Link to="#" className="hover:text-blue-600">Đồ họa</Link>
+          <Link to="/products" className="hover:text-blue-600">Gaming</Link>
+          <Link to="/products" className="hover:text-blue-600">Văn phòng</Link>
+          <Link to="/products" className="hover:text-blue-600">Sinh viên</Link>
+          <Link to="/products" className="hover:text-blue-600">Đồ họa</Link>
 
           {/* ✅ MENU MỚI */}
-          <Link to="#" className="hover:text-blue-600 font-semibold text-blue-600">
+          <Link to="/products" className="hover:text-blue-600 font-semibold text-blue-600">
             Cao Cấp
           </Link>
         </nav>
 
         {/* Icons */}
         <div className="flex items-center gap-4 ml-6">
-          <button className="hover:text-blue-600">🔔</button>
-          <button className="hover:text-blue-600">🛒</button>
-          <button className="hover:text-blue-600">👤</button>
+          <button className="hover:text-blue-600 text-lg">🔔</button>
+          <Link to="/cart" className="hover:text-blue-600 text-lg flex items-center">🛒</Link>
+          <Link to="/login" className="hover:text-blue-600 text-lg flex items-center">👤</Link>
         </div>
 
       </div>

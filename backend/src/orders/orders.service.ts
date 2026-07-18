@@ -9,52 +9,62 @@ export class OrdersService {
   constructor(private prisma: PrismaService) {}
 
   async create(userId: number, dto: CreateOrderDto) {
-    const cart = await this.prisma.cart.findUnique({
-      where: { userId },
-      include: { items: { include: { product: true } } },
-    });
+    const { items, ...orderData } = dto;
 
-    if (!cart || cart.items.length === 0) {
+    // 1. Kiểm tra mảng items từ Frontend gửi lên
+    if (!items || items.length === 0) {
       throw new BadRequestException("Giỏ hàng trống");
     }
 
-    let total = 0;
-    for (const item of cart.items) {
-      if (item.product.stock < item.quantity) {
-        throw new BadRequestException(`Sản phẩm ${item.product.name} không đủ hàng`);
-      }
-      total += Number(item.product.price) * item.quantity;
-    }
+    // 2. Lấy thông tin sản phẩm từ DB để đối chiếu giá và tồn kho
+    const productIds = items.map((item) => item.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+    });
 
+    // 3. Tính toán tổng tiền và validate tồn kho
+    let total = 0;
+    const itemsToCreate = items.map((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      
+      if (!product) {
+        throw new NotFoundException(`Sản phẩm ID ${item.productId} không tồn tại`);
+      }
+      
+      if (product.stock < item.quantity) {
+        throw new BadRequestException(`Sản phẩm ${product.name} không đủ hàng`);
+      }
+
+      total += Number(product.price) * item.quantity;
+
+      return {
+        productId: item.productId,
+        quantity: item.quantity,
+        price: product.price, // Lấy giá từ DB để bảo mật
+      };
+    });
+
+    // 4. Thực hiện transaction: Tạo đơn hàng và trừ tồn kho
     const order = await this.prisma.$transaction(async (tx) => {
       const created = await tx.order.create({
         data: {
           userId,
-          receiverName: dto.receiverName,
-          phone: dto.phone,
-          address: dto.address,
-          note: dto.note,
+          ...orderData,
           total,
-          paymentMethod: dto.paymentMethod,
           items: {
-            create: cart.items.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              price: item.product.price,
-            })),
+            create: itemsToCreate,
           },
         },
         include: { items: { include: { product: true } } },
       });
 
-      for (const item of cart.items) {
+      // Trừ kho
+      for (const item of items) {
         await tx.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
         });
       }
-
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
       return created;
     });

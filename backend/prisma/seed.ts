@@ -6,16 +6,20 @@ const prisma = new PrismaClient();
 async function main() {
   const adminPassword = await bcrypt.hash("123456", 10);
 
-  await prisma.user.upsert({
-    where: { email: "admin@gmail.com" },
-    update: {},
-    create: {
-      email: "admin@gmail.com",
-      password: adminPassword,
-      fullName: "Admin",
-      role: Role.ADMIN,
-    },
-  });
+  // Tìm đoạn này và sửa thành:
+await prisma.user.upsert({
+  where: { email: "admin@gmail.com" },
+  update: {
+    password: adminPassword,
+    role: Role.ADMIN,
+  }, // Đưa mật khẩu và quyền vào đây để cập nhật nếu đã tồn tại
+  create: {
+    email: "admin@gmail.com",
+    password: adminPassword,
+    fullName: "Admin",
+    role: Role.ADMIN,
+  },
+});
 
   const categories = await Promise.all(
     ["Gaming", "Văn phòng", "Sinh viên", "Đồ họa", "Cao cấp"].map((name) =>

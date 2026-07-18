@@ -63,9 +63,12 @@ function ProductCard({
         <div className="rounded-lg bg-gray-50 px-3 py-2">🖥 {storage}</div>
       </div>
 
-      <button className="mt-5 w-full rounded-xl bg-blue-700 py-3 text-sm font-bold text-white transition hover:bg-blue-800">
+      <Link 
+        to="/cart" 
+        className="mt-5 block w-full text-center rounded-xl bg-blue-700 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
+      >
         Thêm vào giỏ
-      </button>
+      </Link>
     </div>
   );
 }

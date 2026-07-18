@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 function HeroBanner() {
   return (
     <section className="mx-auto mt-8 max-w-7xl px-6">
@@ -20,9 +22,12 @@ function HeroBanner() {
               phù hợp cho học tập, làm việc và gaming.
             </p>
 
-            <button className="mt-8 rounded-xl bg-white px-7 py-3 font-bold text-blue-700 shadow-lg transition hover:-translate-y-1 hover:bg-blue-50">
+            <Link 
+              to="/products" 
+              className="mt-8 inline-block rounded-xl bg-white px-7 py-3 font-bold text-blue-700 shadow-lg transition hover:-translate-y-1 hover:bg-blue-50"
+            >
               Mua ngay →
-            </button>
+            </Link>
           </div>
 
           <div className="flex justify-center">

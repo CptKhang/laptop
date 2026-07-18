@@ -13,10 +13,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: number; email: string; role: string }) {
-    const user = await this.usersService.findById(payload.sub);
-    if (!user) throw new UnauthorizedException();
+  async validate(payload: any) {
+    // Lấy ID linh hoạt từ token (thử cả payload.id, payload.userId hoặc payload.sub)
+    const userId = payload.id || payload.userId || payload.sub;
+
+    if (!userId) {
+      throw new UnauthorizedException("Token không chứa thông tin định danh hợp lệ");
+    }
+
+    const user = await this.usersService.findById(Number(userId));
+    if (!user) {
+      throw new UnauthorizedException("Tài khoản trong Token không tồn tại");
+    }
+
     const { password, ...result } = user;
+    
+    // Trả về thông tin user (đã bao gồm trường role: 'ADMIN') để RolesGuard kiểm tra
     return result;
   }
 }
