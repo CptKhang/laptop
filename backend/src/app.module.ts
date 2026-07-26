@@ -1,14 +1,15 @@
-import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config"; // 1. Import ConfigModule
-import { PrismaModule } from "./prisma/prisma.module";
-import { AuthModule } from "./auth/auth.module";
-import { UsersModule } from "./users/users.module";
-import { CategoriesModule } from "./categories/categories.module";
-import { BrandsModule } from "./brands/brands.module";
-import { ProductsModule } from "./products/products.module";
-import { CartModule } from "./cart/cart.module";
-import { OrdersModule } from "./orders/orders.module";
-import { AdminModule } from "./admin/admin.module";
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config'; // 1. Import ConfigModule
+import { PrismaModule } from './prisma/prisma.module';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { CategoriesModule } from './categories/categories.module';
+import { BrandsModule } from './brands/brands.module';
+import { ProductsModule } from './products/products.module';
+import { CartModule } from './cart/cart.module';
+import { OrdersModule } from './orders/orders.module';
+import { ReturnRequestsModule } from './return-requests/return-requests.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { AdminModule } from "./admin/admin.module";
     ProductsModule,
     CartModule,
     OrdersModule,
+    ReturnRequestsModule,
     AdminModule,
   ],
 })

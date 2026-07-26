@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import { Role } from "@prisma/client";
-import { UpdateProfileDto } from "./dto/update-profile.dto";
+import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { Role } from '@prisma/client';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
@@ -9,7 +9,7 @@ export class UsersService {
 
   async findByEmail(email: string) {
     return this.prisma.user.findUnique({
-      where: { email },
+      where: { email: email.trim().toLowerCase() },
     });
   }
 
@@ -39,13 +39,6 @@ export class UsersService {
     });
   }
 
-  async updateUser(id: number, data: any) {
-    return this.prisma.user.update({
-      where: { id },
-      data,
-    });
-  }
-
   async deleteUser(id: number) {
     return this.prisma.user.delete({
       where: { id },
@@ -63,7 +56,7 @@ export class UsersService {
         role: true,
         createdAt: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

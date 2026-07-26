@@ -25,18 +25,33 @@ enum PaymentMethod {
   MOMO
 }
 
+enum ReturnRequestType {
+  RETURN
+  EXCHANGE
+}
+
+enum ReturnRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  fullName  String
-  phone     String?
-  address   String?
-  role      Role     @default(USER)
-  carts     Cart[]
-  orders    Order[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 Int                  @id @default(autoincrement())
+  email              String               @unique
+  password           String
+  fullName           String
+  phone              String?
+  address            String?              @db.VarChar(500)
+  role               Role                 @default(USER)
+  carts              Cart[]
+  orders             Order[]
+  orderStatusChanges OrderStatusHistory[]
+  returnRequests     ReturnRequest[]      @relation("ReturnRequestCustomer")
+  reviewedReturns    ReturnRequest[]      @relation("ReturnRequestReviewer")
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([email])
   @@map("users")
@@ -59,11 +74,11 @@ model Brand {
 }
 
 model Product {
-  id          Int      @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
   name        String
-  description String   @db.Text
-  price       Decimal  @db.Decimal(19, 4)
-  stock       Int      @default(0)
+  description String      @db.Text
+  price       Decimal     @db.Decimal(19, 4)
+  stock       Int         @default(0)
   image       String
   cpu         String?
   ram         String?
@@ -73,12 +88,12 @@ model Product {
   warranty    String?
   categoryId  Int
   brandId     Int
-  category    Category @relation(fields: [categoryId], references: [id])
-  brand       Brand    @relation(fields: [brandId], references: [id])
+  category    Category    @relation(fields: [categoryId], references: [id])
+  brand       Brand       @relation(fields: [brandId], references: [id])
   cartItems   CartItem[]
   orderItems  OrderItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
   @@index([categoryId])
   @@index([brandId])
@@ -113,19 +128,24 @@ model CartItem {
 }
 
 model Order {
-  id            Int           @id @default(autoincrement())
-  userId        Int
-  receiverName  String
-  phone         String
-  address       String
-  note          String?
-  total         Decimal       @db.Decimal(19, 4)
-  status        OrderStatus   @default(PENDING)
-  paymentMethod PaymentMethod @default(COD)
-  user          User          @relation(fields: [userId], references: [id])
-  items         OrderItem[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id             Int                  @id @default(autoincrement())
+  userId         Int
+  receiverName   String
+  phone          String
+  address        String               @db.VarChar(500)
+  note           String?              @db.VarChar(1000)
+  total          Decimal              @db.Decimal(19, 4)
+  status         OrderStatus          @default(PENDING)
+  paymentMethod  PaymentMethod        @default(COD)
+  user           User                 @relation(fields: [userId], references: [id])
+  items          OrderItem[]
+  completedAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?              @db.VarChar(500)
+  statusHistory  OrderStatusHistory[]
+  returnRequests ReturnRequest[]
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -144,4 +164,45 @@ model OrderItem {
   @@index([orderId])
   @@index([productId])
   @@map("order_items")
+}
+
+model OrderStatusHistory {
+  id          Int          @id @default(autoincrement())
+  orderId     Int
+  fromStatus  OrderStatus?
+  toStatus    OrderStatus
+  actorUserId Int
+  reason      String?      @db.VarChar(500)
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor       User         @relation(fields: [actorUserId], references: [id])
+  createdAt   DateTime     @default(now())
+
+  @@index([orderId, createdAt])
+  @@index([actorUserId])
+  @@map("order_status_histories")
+}
+
+model ReturnRequest {
+  id            Int                 @id @default(autoincrement())
+  orderId       Int
+  activeOrderId Int?                @unique
+  userId        Int
+  type          ReturnRequestType
+  reason        String              @db.VarChar(1000)
+  status        ReturnRequestStatus @default(PENDING)
+  adminNote     String?             @db.VarChar(1000)
+  reviewedById  Int?
+  reviewedAt    DateTime?
+  completedAt   DateTime?
+  order         Order               @relation(fields: [orderId], references: [id])
+  user          User                @relation("ReturnRequestCustomer", fields: [userId], references: [id])
+  reviewedBy    User?               @relation("ReturnRequestReviewer", fields: [reviewedById], references: [id])
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([orderId])
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([reviewedById])
+  @@map("return_requests")
 }

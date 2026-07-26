@@ -1,43 +1,58 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsArray, ValidateNested, IsNumber, Min } from "class-validator";
-import { Type } from "class-transformer";
-import { PaymentMethod } from "@prisma/client";
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  MaxLength,
+  Min,
+  ValidateNested,
+} from 'class-validator';
+import { PaymentMethod } from '@prisma/client';
 
-// Định nghĩa cấu trúc cho từng item
-class OrderItemDto {
-  @IsNumber()
-  productId: number;
-
-  @IsNumber()
+export class OrderItemDto {
+  @Type(() => Number)
+  @IsInt()
   @Min(1)
-  quantity: number;
+  productId!: number;
 
-  @IsNumber()
-  price: number;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  quantity!: number;
 }
 
 export class CreateOrderDto {
-  @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  receiverName: string;
+  @Length(2, 100)
+  receiverName!: string;
 
-  @IsNotEmpty()
-  @IsString()
-  phone: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Matches(/^\+?[0-9]{9,15}$/)
+  phone!: string;
 
-  @IsNotEmpty()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
-  address: string;
+  @Length(1, 500)
+  address!: string;
 
   @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
+  @MaxLength(1000)
   note?: string;
 
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod = PaymentMethod.COD;
 
-  // Trường này cực kỳ quan trọng, đã khớp với Frontend gửi lên
   @IsArray()
+  @ArrayMinSize(1)
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
-  items: OrderItemDto[];
+  items!: OrderItemDto[];
 }

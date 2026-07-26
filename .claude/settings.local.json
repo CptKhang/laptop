@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(npx *)",
+      "Bash(npm *)",
+      "mcp__gitnexus__api_impact",
+      "Bash(rg --files \"backend/src\")",
+      "Bash(rg 'spec\\\\.ts$')",
+      "Bash(node *)",
+      "Bash(backend/node_modules/.bin/ts-node *)",
+      "Bash(DATABASE_URL=\"mysql://laptop:123456@localhost:3306/laptop_shop\" backend/node_modules/.bin/prisma format *)",
+      "mcp__gitnexus__detect_changes",
+      "Bash(DATABASE_URL=\"mysql://laptop:123456@localhost:3306/laptop_shop\" /Users/aidenle/laptop_project/laptop/backend/node_modules/.bin/prisma validate *)",
+      "Bash(DATABASE_URL=\"mysql://laptop:123456@localhost:3306/laptop_shop\" backend/node_modules/.bin/prisma generate --schema backend/prisma/schema.prisma)",
+      "Bash(backend/node_modules/.bin/prettier --write backend/src/prisma/schema.spec.ts backend/src/return-requests/return-requests.service.ts backend/src/return-requests/return-requests.service.spec.ts)",
+      "Bash(DATABASE_URL=\"mysql://laptop:123456@localhost:3306/laptop_shop\" backend/node_modules/.bin/prisma validate --schema backend/prisma/schema.prisma)",
+      "Bash(DATABASE_URL=\"mysql://laptop:123456@localhost:3306/laptop_shop\" backend/node_modules/.bin/prisma migrate diff --from-empty --to-schema-datamodel backend/prisma/schema.prisma --script --output \"/tmp/laptop-generated-baseline.sql\")",
+      "Bash(backend/node_modules/.bin/prettier --write backend/src/auth/auth.service.ts backend/src/auth/auth.service.spec.ts)",
+      "Bash(grep *)"
+    ]
+  }
+}
