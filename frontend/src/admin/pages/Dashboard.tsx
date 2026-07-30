@@ -1,19 +1,25 @@
 import { useEffect, useState } from "react";
+// 1. Import instance api đã được cấu hình tự động gắn token
+import { api } from "../../utils/api"; 
 
 function Dashboard() {
   const [stats, setStats] = useState({ products: 0, orders: 0, revenue: 0 });
 
   useEffect(() => {
-    fetch("http://localhost:3000/products")
-      .then((res) => res.json())
-      .then((data) => {
+    // 2. Gọi đúng Endpoint chuyên dụng của Admin Dashboard
+    api.get("/admin/dashboard")
+      .then((res) => {
+        const data = res.data;
+        // 3. Khớp nối đúng tên biến do backend trả về và ép kiểu Decimal
         setStats({
-          products: data.length || 0,
-          orders: 0, // Sẽ tự nhảy khi có dữ liệu đơn hàng
-          revenue: 0,
+          products: data.totalProducts || 0,
+          orders: data.todayOrders || 0,
+          revenue: Number(data.totalRevenue) || 0, 
         });
       })
-      .catch((err) => console.error("Lỗi lấy dữ liệu Dashboard:", err));
+      .catch((err) => {
+        console.error("Lỗi lấy dữ liệu Dashboard:", err);
+      });
   }, []);
 
   return (

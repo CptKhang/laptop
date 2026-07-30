@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AuthService } from "../../../services/auth.service";
 
 function AdminLoginPage() {
   const navigate = useNavigate();
@@ -11,31 +12,20 @@ function AdminLoginPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:3000/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
+      // Gọi qua Tầng Dịch vụ, đảm bảo trúng đích /admin/auth/login
+      const data = await AuthService.loginAdmin({ email, password });
 
-      const data = await res.json();
-
-      if (res.ok) {
-        // Hỗ trợ mọi kiểu trả về của Backend: access_token, accessToken, hoặc token
-        const tokenReal = data.access_token || data.accessToken || data.token;
-        
-        if (tokenReal) {
-          localStorage.setItem("token", tokenReal);
-          navigate("/admin");
-        } else {
-          console.error("Cấu trúc phản hồi từ Backend:", data);
-          alert("Đăng nhập thành công nhưng không tìm thấy token trong dữ liệu trả về từ Backend!");
-        }
-      } else {
-        alert(data.message || "Sai tài khoản hoặc mật khẩu!");
+      // Lưu đúng từ khóa mà Interceptor trong api.ts đang chờ đợi
+      if (data.access_token) {
+        localStorage.setItem("access_token", data.access_token);
+        // Chuyển hướng vào trang quản trị
+        navigate("/admin");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Không thể kết nối đến server backend.");
+      // Bóc tách lỗi từ Axios bọc lại
+      const errorMessage = err.response?.data?.message || "Sai tài khoản hoặc mật khẩu!";
+      alert(Array.isArray(errorMessage) ? errorMessage.join(", ") : errorMessage);
     }
   };
 

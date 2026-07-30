@@ -1,76 +1,104 @@
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ShoppingCart } from "lucide-react";
+// 1. Import API Client
+import { api } from "../../../utils/api";
 
-type ProductCardProps = {
-  id?: number;
+export type ProductCardProps = {
+  id: number | string;
   name: string;
-  price: number;
-  oldPrice?: number;
+  price: number | string;
+  oldPrice?: number | string;
   image: string;
-  cpu: string;
-  ram: string;
-  storage: string;
+  cpu?: string;
+  ram?: string;
+  storage?: string;
   discount?: string;
 };
 
-function ProductCard({
+export default function ProductCard({
   id,
   name,
   price,
   oldPrice,
   image,
-  cpu,
-  ram,
-  storage,
   discount,
 }: ProductCardProps) {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+
+  // 2. HÀM THÊM VÀO GIỎ HÀNG GỌI TRỰC TIẾP API BACKEND
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Chặn hành vi chuyển trang của thẻ Link bọc ngoài
+    setLoading(true);
+
+    try {
+      // Endpoint chuẩn từ api.md: POST /cart/items[cite: 1]
+      await api.post("/cart/items", {
+        productId: Number(id),
+        quantity: 1
+      });
+
+      alert(`Đã thêm "${name}" vào giỏ hàng thành công!`);
+    } catch (err: any) {
+      console.error("Lỗi khi thêm vào giỏ:", err);
+      if (err.response?.status === 401) {
+        alert("Vui lòng đăng nhập để sử dụng giỏ hàng.");
+        navigate("/login");
+      } else {
+        const msg = err.response?.data?.message || "Không thể thêm sản phẩm vào giỏ hàng.";
+        alert(Array.isArray(msg) ? msg.join(", ") : msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="group relative overflow-hidden rounded-2xl bg-white p-4 shadow-sm transition hover:-translate-y-2 hover:shadow-xl">
-      {discount && (
-        <span className="absolute left-4 top-4 z-10 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white">
-          {discount}
-        </span>
-      )}
-
-      <Link to={`/products/${id ?? 1}`}>
-        <div className="flex h-44 items-center justify-center rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50">
-          <img
-            src={image}
-            alt={name}
-            className="max-h-36 object-contain transition duration-300 group-hover:scale-110"
-          />
-        </div>
-
-        <h3 className="mt-4 line-clamp-2 min-h-[48px] text-base font-bold text-gray-900 hover:text-blue-700">
-          {name}
-        </h3>
-      </Link>
-
-      <div className="mt-3">
-        <p className="text-2xl font-extrabold text-blue-700">
-          {price.toLocaleString("vi-VN")}₫
-        </p>
-
-        {oldPrice && (
-          <p className="mt-1 text-sm text-gray-400 line-through">
-            {oldPrice.toLocaleString("vi-VN")}₫
-          </p>
+    <Link 
+      to={`/products/${id}`} 
+      className="group flex flex-col overflow-hidden rounded-3xl bg-white border border-gray-100 p-4 shadow-sm transition hover:shadow-md"
+    >
+      <div className="relative flex h-52 items-center justify-center rounded-2xl bg-gray-50 overflow-hidden">
+        <img 
+          src={image} 
+          alt={name} 
+          className="max-h-44 object-contain transition duration-300 group-hover:scale-105" 
+          onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image'; }}
+        />
+        {discount && (
+          <span className="absolute top-3 left-3 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
+            {discount}
+          </span>
         )}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-gray-600">
-        <div className="rounded-lg bg-gray-50 px-3 py-2">⚙ {cpu}</div>
-        <div className="rounded-lg bg-gray-50 px-3 py-2">💾 {ram}</div>
-        <div className="rounded-lg bg-gray-50 px-3 py-2">🖥 {storage}</div>
-      </div>
+      <div className="mt-4 flex flex-1 flex-col justify-between">
+        <div>
+          <h3 className="font-extrabold text-gray-900 line-clamp-2 group-hover:text-blue-700 transition">
+            {name}
+          </h3>
+          <div className="mt-2 flex items-baseline gap-2">
+            <span className="text-xl font-extrabold text-blue-700">
+              {Number(price).toLocaleString("vi-VN")}₫
+            </span>
+            {oldPrice && (
+              <span className="text-sm text-gray-400 line-through">
+                {Number(oldPrice).toLocaleString("vi-VN")}₫
+              </span>
+            )}
+          </div>
+        </div>
 
-      <Link 
-        to="/cart" 
-        className="mt-5 block w-full text-center rounded-xl bg-blue-700 py-3 text-sm font-bold text-white transition hover:bg-blue-800"
-      >
-        Thêm vào giỏ
-      </Link>
-    </div>
+        <button
+          onClick={handleAddToCart}
+          disabled={loading}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 py-3 font-bold text-blue-700 transition hover:bg-blue-700 hover:text-white disabled:bg-gray-100 disabled:text-gray-400"
+        >
+          <ShoppingCart size={18} />
+          {loading ? "Đang xử lý..." : "Thêm vào giỏ"}
+        </button>
+      </div>
+    </Link>
   );
 }
-
-export default ProductCard;

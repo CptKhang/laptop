@@ -2,19 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CreditCard,
-  MapPin,
   PackageCheck,
-  Phone,
-  Truck,
   UserRound,
-  UserMinus,
 } from "lucide-react";
 import Footer from "../../components/layout/Footer/Footer";
 import Header from "../../components/layout/Header/Header";
+// 1. Import Tầng Nền tảng
+import { api } from "../../utils/api";
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState([]);
+  const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("COD");
   const [formData, setFormData] = useState({
@@ -24,33 +22,43 @@ function CheckoutPage() {
     note: "",
   });
 
+  // 2. Đồng bộ lấy giỏ hàng từ Server (/cart) thay vì LocalStorage đơn thuần
   useEffect(() => {
-    const savedCart = localStorage.getItem("techblue_cart");
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
-    }
+    const fetchCartForCheckout = async () => {
+      try {
+        const response = await api.get("/cart");
+        setCartItems(response.data?.items || []);
+      } catch (err) {
+        console.error("Lỗi tải giỏ hàng cho checkout:", err);
+      }
+    };
+    fetchCartForCheckout();
   }, []);
 
-  const subtotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+  // Tính toán tổng tiền dựa trên cấu trúc item.product.price từ Server trả về
+  const subtotal = cartItems.reduce((total, item) => {
+    const price = Number(item.product?.price || item.price || 0);
+    const qty = Number(item.quantity || 0);
+    return total + price * qty;
+  }, 0);
+
   const shippingFee = 0;
   const discount = 0;
   const total = subtotal + shippingFee - discount;
 
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: any) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handlePaymentChange = (e) => {
+  const handlePaymentChange = (e: any) => {
     setPaymentMethod(e.target.value);
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
 
-    const token = localStorage.getItem("token");
-
-    // ĐÃ SỬA: Đóng gói thêm items từ cartItems vào orderData
+    // 3. Xây dựng payload chuẩn xác theo api.md (TUYỆT ĐỐI KHÔNG GỬI TRƯỜNG PRICE)
     const orderData = {
       receiverName: formData.fullName,
       phone: formData.phone,
@@ -58,35 +66,22 @@ function CheckoutPage() {
       note: formData.note,
       paymentMethod: paymentMethod,
       items: cartItems.map((item) => ({
-        productId: Number(item.id),
+        productId: Number(item.productId || item.product?.id || item.id),
         quantity: Number(item.quantity),
-        // Ép kiểu price về Number ở đây
-        price: Number(item.price), 
       })),
     };
 
     try {
-      const response = await fetch("http://localhost:3000/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify(orderData),
-      });
+      // 4. Gửi request tạo đơn hàng lên Backend
+      await api.post("/orders", orderData);
 
-      if (response.ok) {
-        alert("Đặt hàng thành công!");
-        localStorage.removeItem("techblue_cart"); // Xoá giỏ hàng sau khi đặt thành công
-        navigate("/order-success");
-      } else {
-        const errorData = await response.json();
-        console.error("Lỗi từ server:", errorData);
-        alert(`Có lỗi xảy ra: ${errorData.message || "Vui lòng thử lại"}`);
-      }
-    } catch (error) {
+      alert("Đặt hàng thành công!");
+      navigate("/order-success");
+      
+    } catch (error: any) {
       console.error("Lỗi đặt hàng:", error);
-      alert("Không kết nối được tới server.");
+      const errorMessage = error.response?.data?.message || "Không thể kết nối đến server. Vui lòng thử lại.";
+      alert(`Có lỗi xảy ra: ${Array.isArray(errorMessage) ? errorMessage.join(", ") : errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -156,16 +151,19 @@ function CheckoutPage() {
             <aside className="h-fit rounded-3xl bg-white p-6 shadow-sm">
               <h2 className="text-xl font-extrabold">Tóm tắt đơn hàng</h2>
               <div className="mt-6 space-y-4">
-                {cartItems.map((item) => (
-                  <div key={item.id} className="flex gap-3">
-                    <img src={item.image} className="h-14 w-14 rounded-lg object-contain" alt={item.name} />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold">{item.name}</p>
-                      <p className="text-xs text-gray-500">SL: {item.quantity}</p>
-                      <p className="text-blue-600 font-bold">{item.price.toLocaleString("vi-VN")}₫</p>
+                {cartItems.map((item) => {
+                  const product = item.product || item;
+                  return (
+                    <div key={item.id} className="flex gap-3 items-center">
+                      <img src={product.image} className="h-14 w-14 rounded-lg object-contain bg-gray-50 p-1" alt={product.name} />
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold line-clamp-1">{product.name}</p>
+                        <p className="text-xs text-gray-500">SL: {item.quantity}</p>
+                        <p className="text-blue-600 font-bold">{Number(product.price || 0).toLocaleString("vi-VN")}₫</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="mt-6 border-t pt-4 text-sm space-y-2">
@@ -186,13 +184,13 @@ function CheckoutPage() {
               <button
                 type="submit"
                 disabled={loading || cartItems.length === 0}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 py-4 font-bold text-white hover:bg-blue-800 disabled:bg-gray-400"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 py-4 font-bold text-white hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed shadow-md"
               >
                 <PackageCheck size={18} />
-                {loading ? "Đang xử lý..." : "Đặt hàng"}
+                {loading ? "Đang xử lý đơn..." : "Đặt hàng"}
               </button>
 
-              <button type="button" onClick={() => navigate("/cart")} className="mt-3 block w-full text-center text-blue-600">
+              <button type="button" onClick={() => navigate("/cart")} className="mt-3 block w-full text-center text-blue-600 hover:underline text-sm font-semibold">
                 Quay lại giỏ hàng
               </button>
             </aside>

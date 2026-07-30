@@ -1,21 +1,32 @@
 import { useEffect, useState } from "react";
+// 1. Import Tầng Nền tảng
+import { api } from "../../utils/api"; 
 
 type Product = {
   id: number;
   name: string;
-  price: number;
+  price: string | number; // Backend trả về string do dùng Decimal
   stock: number;
   image: string;
   cpu: string;
   ram: string;
   storage: string;
   description: string;
-  // Bổ sung các trường có thể có để tránh lỗi TypeScript khi map dữ liệu
   screen?: string;
   gpu?: string;
   warranty?: string;
   categoryId?: number;
   brandId?: number;
+};
+
+type Category = {
+  id: number;
+  name: string;
+};
+
+type Brand = {
+  id: number;
+  name: string;
 };
 
 const DEFAULT_FORM_DATA = {
@@ -36,28 +47,53 @@ const DEFAULT_FORM_DATA = {
 
 function Products() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]); // State lưu danh mục
+  const [brands, setBrands] = useState<Brand[]>([]);             // State lưu thương hiệu
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
 
   const loadProducts = () => {
-    fetch("http://localhost:3000/products")
-      .then((res) => res.json())
-      .then((data: any) => {
-        if (data && Array.isArray(data.items)) {
-          setProducts(data.items);
+    api.get("/products")
+      .then((res) => {
+        if (res.data && Array.isArray(res.data.items)) {
+          setProducts(res.data.items);
         } else {
           setProducts([]);
         }
       })
       .catch((err) => {
-        console.error("Lỗi fetch products:", err);
+        console.error("Lỗi lấy danh sách sản phẩm:", err);
         setProducts([]);
+      });
+  };
+
+  // Gọi API lấy danh mục
+  const loadCategories = () => {
+    api.get("/categories")
+      .then((res) => {
+        setCategories(res.data || []);
+      })
+      .catch((err) => {
+        console.error("Lỗi lấy danh sách danh mục:", err);
+      });
+  };
+
+  // Gọi API lấy thương hiệu
+  const loadBrands = () => {
+    api.get("/brands")
+      .then((res) => {
+        setBrands(res.data || []);
+      })
+      .catch((err) => {
+        console.error("Lỗi lấy danh sách thương hiệu:", err);
       });
   };
 
   useEffect(() => {
     loadProducts();
+    loadCategories();
+    loadBrands();
   }, []);
 
   const resetForm = () => {
@@ -76,7 +112,7 @@ function Products() {
     setFormData({
       name: product.name,
       description: product.description,
-      price: product.price,
+      price: Number(product.price),
       stock: product.stock,
       image: product.image,
       cpu: product.cpu,
@@ -94,50 +130,43 @@ function Products() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    const token = localStorage.getItem("token");
-    if (!token || token === "undefined" || token === "null") {
-      alert("Lỗi: Không tìm thấy mã phiên đăng nhập. Vui lòng đăng nhập lại!");
-      return;
-    }
 
     try {
-      // Phân luồng logic: Nếu có editingId -> Sửa (PUT), Nếu không -> Thêm mới (POST)
-      const url = editingId 
-        ? `http://localhost:3000/products/${editingId}` 
-        : "http://localhost:3000/products";
-      const method = editingId ? "PUT" : "POST";
-
-      const res = await fetch(url, {
-        method: method,
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token.trim()}`
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (res.ok) {
-        alert(editingId ? "Cập nhật sản phẩm thành công!" : "Thêm sản phẩm mới thành công!");
-        setShowForm(false);
-        resetForm();
-        loadProducts();
+      if (editingId) {
+        await api.patch(`/products/${editingId}`, formData);
       } else {
-        const data = await res.json();
-        const errorMsg = Array.isArray(data.message) ? data.message.join("\n") : data.message;
-        alert(`Lỗi Backend (${res.status}):\n${errorMsg || "Không có quyền thực hiện"}`);
+        await api.post("/products", formData);
       }
-    } catch (err) {
+
+      alert(editingId ? "Cập nhật sản phẩm thành công!" : "Thêm sản phẩm mới thành công!");
+      setShowForm(false);
+      resetForm();
+      loadProducts();
+    } catch (err: any) {
       console.error(err);
-      alert("Mất kết nối tới server backend.");
+      const errorMessage = err.response?.data?.message || "Không có quyền thực hiện";
+      alert(`Lỗi Backend:\n${Array.isArray(errorMessage) ? errorMessage.join("\n") : errorMessage}`);
     }
   };
 
-  const handleDelete = (id: number) => {
+  // 🛠 SỬA LỖI HÀM XÓA: Bóc tách lỗi chi tiết từ Server trả về
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation(); // Ngăn chặn sự kiện lan truyền lên thẻ tr nếu có
+    
     if (window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
-      fetch(`http://localhost:3000/products/${id}`, { method: "DELETE" })
-        .then(() => loadProducts())
-        .catch((err) => console.error(err));
+      try {
+        await api.delete(`/products/${id}`);
+        alert("Xóa sản phẩm thành công!");
+        loadProducts();
+      } catch (err: any) {
+        console.error("Lỗi xóa sản phẩm:", err);
+        const errorMessage = 
+          err.response?.data?.message || 
+          err.response?.data?.error || 
+          "Không thể xóa sản phẩm này (có thể sản phẩm đã nằm trong đơn hàng hoặc không có quyền).";
+        
+        alert(`Thất bại:\n${Array.isArray(errorMessage) ? errorMessage.join("\n") : errorMessage}`);
+      }
     }
   };
 
@@ -163,6 +192,38 @@ function Products() {
           <div className="col-span-2">
             <label className="block text-sm font-semibold mb-1 text-gray-700">Mô tả sản phẩm</label>
             <textarea required value={formData.description} className="w-full border p-2 rounded-lg" rows={3} onChange={(e) => setFormData({ ...formData, description: e.target.value })} />
+          </div>
+
+          {/* Trường chọn Danh mục sản phẩm */}
+          <div>
+            <label className="block text-sm font-semibold mb-1 text-gray-700">Danh mục sản phẩm</label>
+            <select 
+              value={formData.categoryId} 
+              onChange={(e) => setFormData({ ...formData, categoryId: Number(e.target.value) })}
+              className="w-full border p-2 rounded-lg bg-white"
+            >
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Trường chọn Thương hiệu sản phẩm */}
+          <div>
+            <label className="block text-sm font-semibold mb-1 text-gray-700">Thương hiệu (Brand)</label>
+            <select 
+              value={formData.brandId} 
+              onChange={(e) => setFormData({ ...formData, brandId: Number(e.target.value) })}
+              className="w-full border p-2 rounded-lg bg-white"
+            >
+              {brands.map((brand) => (
+                <option key={brand.id} value={brand.id}>
+                  {brand.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>
@@ -213,7 +274,6 @@ function Products() {
             {products.map((p) => (
               <tr key={p.id} className="border-b hover:bg-gray-50 transition">
                 <td className="p-4">
-                  {/* Đã thêm cơ chế chống lỗi UI bằng onError */}
                   <img 
                     src={p.image} 
                     className="w-12 h-12 object-contain" 
@@ -222,11 +282,12 @@ function Products() {
                   />
                 </td>
                 <td className="p-4 font-semibold text-gray-800">{p.name}</td>
-                <td className="p-4 text-blue-700 font-bold">{p.price.toLocaleString("vi-VN")}₫</td>
+                <td className="p-4 text-blue-700 font-bold">{Number(p.price).toLocaleString("vi-VN")}₫</td>
                 <td className="p-4 text-gray-600">{p.stock} máy</td>
                 <td className="p-4 space-x-4">
                   <button onClick={() => handleEditClick(p)} className="text-blue-500 hover:text-blue-700 font-bold hover:underline">Sửa</button>
-                  <button onClick={() => handleDelete(p.id)} className="text-red-500 hover:text-red-700 font-bold hover:underline">Xóa</button>
+                  {/* Cập nhật sự kiện gọi hàm xóa kèm event.stopPropagation */}
+                  <button onClick={(e) => handleDelete(e, p.id)} className="text-red-500 hover:text-red-700 font-bold hover:underline">Xóa</button>
                 </td>
               </tr>
             ))}
