@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import Header from "../../components/layout/Header/Header";
 import HeroBanner from "../../components/home/HeroBanner/HeroBanner";
 import BrandList from "../../components/home/BrandList/BrandList";

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 // Import Tầng Nền tảng
 import { api } from "../../utils/api"; 
 
@@ -12,11 +12,13 @@ type User = {
 
 function Users() {
   const navigate = useNavigate();
+  const location = useLocation(); // Lấy thông tin location để lắng nghe sự thay đổi
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchUsers = () => {
+    setLoading(true);
     api.get("/users")
       .then((res) => {
         const dataList = Array.isArray(res.data) ? res.data : (res.data.items || []);
@@ -28,7 +30,12 @@ function Users() {
         setError("Không thể tải danh sách người dùng hoặc bạn không có quyền truy cập.");
         setLoading(false);
       });
-  }, []);
+  };
+
+  // ✅ Thay vì dùng [location], hãy dùng [location.key] để bắt chính xác sự kiện quay lại trang
+  useEffect(() => {
+    fetchUsers();
+  }, [location.key]);
 
   return (
     <div>

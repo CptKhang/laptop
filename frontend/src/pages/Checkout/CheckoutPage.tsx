@@ -58,7 +58,6 @@ function CheckoutPage() {
     e.preventDefault();
     setLoading(true);
 
-    // 3. Xây dựng payload chuẩn xác theo api.md (TUYỆT ĐỐI KHÔNG GỬI TRƯỜNG PRICE)
     const orderData = {
       receiverName: formData.fullName,
       phone: formData.phone,
@@ -72,11 +71,13 @@ function CheckoutPage() {
     };
 
     try {
-      // 4. Gửi request tạo đơn hàng lên Backend
-      await api.post("/orders", orderData);
+      // 3. Gửi request tạo đơn hàng lên Backend và nhận lại phản hồi chứa id thực tế từ database
+      const response = await api.post("/orders", orderData);
 
       alert("Đặt hàng thành công!");
-      navigate("/order-success");
+      
+      // ✅ 4. Chuyển hướng sang trang success và truyền object đơn hàng qua state để đồng bộ mã
+      navigate("/order-success", { state: { order: response.data } });
       
     } catch (error: any) {
       console.error("Lỗi đặt hàng:", error);

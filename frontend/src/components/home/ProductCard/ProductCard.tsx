@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingCart } from "lucide-react";
+import { ShoppingCart, Ban } from "lucide-react";
 // 1. Import API Client
 import { api } from "../../../utils/api";
 
@@ -14,6 +14,7 @@ export type ProductCardProps = {
   ram?: string;
   storage?: string;
   discount?: string;
+  isActive?: boolean;
 };
 
 export default function ProductCard({
@@ -23,17 +24,17 @@ export default function ProductCard({
   oldPrice,
   image,
   discount,
+  isActive = true,
 }: ProductCardProps) {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
-  // 2. HÀM THÊM VÀO GIỎ HÀNG GỌI TRỰC TIẾP API BACKEND
   const handleAddToCart = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Chặn hành vi chuyển trang của thẻ Link bọc ngoài
+    e.preventDefault();
+    if (!isActive) return;
     setLoading(true);
 
     try {
-      // Endpoint chuẩn từ api.md: POST /cart/items[cite: 1]
       await api.post("/cart/items", {
         productId: Number(id),
         quantity: 1
@@ -66,9 +67,18 @@ export default function ProductCard({
           className="max-h-44 object-contain transition duration-300 group-hover:scale-105" 
           onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=No+Image'; }}
         />
-        {discount && (
+        
+        {/* Nhãn giảm giá */}
+        {discount && isActive && (
           <span className="absolute top-3 left-3 rounded-full bg-red-500 px-3 py-1 text-xs font-bold text-white shadow-sm">
             {discount}
+          </span>
+        )}
+
+        {/* Nhãn Ngừng kinh doanh góc trên, không làm mờ ảnh */}
+        {!isActive && (
+          <span className="absolute top-3 left-3 rounded-full bg-red-600 px-3 py-1 text-xs font-bold text-white shadow-sm">
+            Ngừng kinh doanh
           </span>
         )}
       </div>
@@ -90,13 +100,18 @@ export default function ProductCard({
           </div>
         </div>
 
+        {/* Nút bấm thay đổi tùy theo trạng thái kinh doanh */}
         <button
           onClick={handleAddToCart}
-          disabled={loading}
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-50 py-3 font-bold text-blue-700 transition hover:bg-blue-700 hover:text-white disabled:bg-gray-100 disabled:text-gray-400"
+          disabled={loading || !isActive}
+          className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3 font-bold text-sm transition ${
+            isActive 
+              ? "bg-blue-50 text-blue-700 hover:bg-blue-700 hover:text-white" 
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+          }`}
         >
-          <ShoppingCart size={18} />
-          {loading ? "Đang xử lý..." : "Thêm vào giỏ"}
+          {isActive ? <ShoppingCart size={18} /> : <Ban size={18} />}
+          {loading ? "Đang xử lý..." : isActive ? "Thêm vào giỏ" : "Đã ngừng bán"}
         </button>
       </div>
     </Link>

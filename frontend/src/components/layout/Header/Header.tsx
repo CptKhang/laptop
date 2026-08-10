@@ -45,10 +45,10 @@ const Header: React.FC = () => {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 hover:opacity-90 transition">
           <div className="w-10 h-10 bg-blue-700 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-md">
-            T
+            B
           </div>
           <h1 className="text-2xl font-extrabold text-blue-800 tracking-tight">
-            TechBlue
+            BeeTech
           </h1>
         </Link>
 

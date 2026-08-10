@@ -11,12 +11,13 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { OrderQueryDto } from './dto/order-query.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
 
+// Cho phép Admin linh hoạt chuyển đổi giữa các trạng thái trước khi đơn kết thúc
 const ORDER_STATUS_TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
-  [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  [OrderStatus.CONFIRMED]: [OrderStatus.SHIPPING],
-  [OrderStatus.SHIPPING]: [OrderStatus.COMPLETED],
-  [OrderStatus.COMPLETED]: [],
-  [OrderStatus.CANCELLED]: [],
+  [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.SHIPPING, OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.PENDING, OrderStatus.SHIPPING, OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+  [OrderStatus.SHIPPING]: [OrderStatus.PENDING, OrderStatus.CONFIRMED, OrderStatus.COMPLETED, OrderStatus.CANCELLED],
+  [OrderStatus.COMPLETED]: [], // Khóa cứng: Đã giao thì không được chuyển trạng thái nữa
+  [OrderStatus.CANCELLED]: [], // Khóa cứng: Đã hủy thì không được chuyển trạng thái nữa
 };
 
 @Injectable()
@@ -109,16 +110,18 @@ export class OrdersService {
       if (order.userId !== userId) {
         throw new ForbiddenException('Bạn không có quyền hủy đơn hàng này');
       }
-      if (order.status !== OrderStatus.PENDING) {
-        throw new BadRequestException('Chỉ có thể hủy đơn hàng đang chờ xử lý');
+      
+      // Không cho phép hủy nếu đơn đã hoàn thành hoặc đã bị hủy trước đó
+      if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Đơn hàng đã hoàn thành hoặc đã bị hủy trước đó');
       }
 
       const updated = await tx.order.updateMany({
-        where: { id, status: OrderStatus.PENDING },
+        where: { id, status: order.status },
         data: {
           status: OrderStatus.CANCELLED,
           cancelledAt: new Date(),
-          cancelReason: dto.reason,
+          cancelReason: dto.reason || 'Khách hàng hủy đơn hàng',
         },
       });
       if (updated.count !== 1) {
@@ -135,10 +138,10 @@ export class OrdersService {
       await tx.orderStatusHistory.create({
         data: {
           orderId: id,
-          fromStatus: OrderStatus.PENDING,
+          fromStatus: order.status,
           toStatus: OrderStatus.CANCELLED,
           actorUserId: userId,
-          reason: dto.reason,
+          reason: dto.reason || 'Khách hàng hủy đơn hàng',
         },
       });
 
@@ -225,14 +228,19 @@ export class OrdersService {
       if (!order) {
         throw new NotFoundException('Order not found');
       }
+
+      // Chặn tuyệt đối không cho phép đổi trạng thái nếu đơn hàng đã hoàn tất hoặc đã hủy
+      if (order.status === OrderStatus.COMPLETED || order.status === OrderStatus.CANCELLED) {
+        throw new BadRequestException('Đơn hàng đã ở trạng thái kết thúc, không thể thay đổi trạng thái nữa.');
+      }
+
       if (!ORDER_STATUS_TRANSITIONS[order.status].includes(dto.status)) {
         throw new BadRequestException(
           'Chuyển trạng thái đơn hàng không hợp lệ',
         );
       }
-      if (dto.status === OrderStatus.CANCELLED && !dto.reason) {
-        throw new BadRequestException('Cần cung cấp lý do hủy đơn hàng');
-      }
+
+      const cancelReasonText = dto.reason || 'Admin hủy đơn hàng';
 
       const data: Prisma.OrderUpdateManyMutationInput = {
         status: dto.status,
@@ -240,9 +248,10 @@ export class OrdersService {
           ? { completedAt: new Date() }
           : {}),
         ...(dto.status === OrderStatus.CANCELLED
-          ? { cancelledAt: new Date(), cancelReason: dto.reason }
+          ? { cancelledAt: new Date(), cancelReason: cancelReasonText }
           : {}),
       };
+
       const updated = await tx.order.updateMany({
         where: { id, status: order.status },
         data,
@@ -251,6 +260,7 @@ export class OrdersService {
         throw new BadRequestException('Trạng thái đơn hàng đã thay đổi');
       }
 
+      // Nếu chuyển sang trạng thái hủy, tự động hoàn trả lại tồn kho sản phẩm
       if (dto.status === OrderStatus.CANCELLED) {
         for (const item of order.items) {
           await tx.product.update({
@@ -266,7 +276,7 @@ export class OrdersService {
           fromStatus: order.status,
           toStatus: dto.status,
           actorUserId,
-          reason: dto.reason,
+          reason: dto.status === OrderStatus.CANCELLED ? cancelReasonText : null,
         },
       });
 

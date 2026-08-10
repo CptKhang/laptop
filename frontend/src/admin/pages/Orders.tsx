@@ -7,7 +7,7 @@ const ORDER_STATUSES = {
   PENDING: { label: "Chờ xử lý", color: "bg-yellow-100 text-yellow-800" },
   CONFIRMED: { label: "Đã xác nhận", color: "bg-blue-100 text-blue-800" },
   SHIPPING: { label: "Đang giao hàng", color: "bg-purple-100 text-purple-800" },
-  DELIVERED: { label: "Đã giao", color: "bg-green-100 text-green-800" },
+  COMPLETED: { label: "Đã giao", color: "bg-green-100 text-green-800" }, // Đã đồng bộ COMPLETED khớp với backend
   CANCELLED: { label: "Đã hủy", color: "bg-red-100 text-red-800" }
 };
 
@@ -49,12 +49,11 @@ function Orders() {
 
   // 3. Xử lý logic gọi API cập nhật trạng thái thực tế
   const handleStatusChange = async (orderId: string | number, newStatus: keyof typeof ORDER_STATUSES) => {
-    // Báo hiệu đang xử lý
     const confirmChange = window.confirm(`Xác nhận chuyển trạng thái đơn hàng #${orderId} thành "${ORDER_STATUSES[newStatus].label}"?`);
     if (!confirmChange) return;
 
     try {
-      // Gọi API thực tế xuống Backend (thường là PATCH)
+      // Gọi API thực tế xuống Backend (PATCH)
       await api.patch(`/orders/${orderId}/status`, { status: newStatus });
       
       // Chỉ khi BE trả về thành công (2xx), mới cập nhật UI
@@ -105,12 +104,13 @@ function Orders() {
                       {Number(o.total)?.toLocaleString("vi-VN")}₫
                     </td>
                     <td className="p-4" onClick={(e) => e.stopPropagation()}>
-                      <div className="relative inline-block w-40">
+                      <div className="relative inline-block w-45">
                         <select
                           value={o.status}
                           onChange={(e) => handleStatusChange(o.id, e.target.value as keyof typeof ORDER_STATUSES)}
-                          disabled={o.status === "DELIVERED" || o.status === "CANCELLED"}
-                          className={`block w-full appearance-none rounded-full px-4 py-1.5 text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors ${ORDER_STATUSES[o.status].color} ${["DELIVERED", "CANCELLED"].includes(o.status) ? 'cursor-not-allowed opacity-70' : ''}`}
+                          // Khóa select nếu đơn hàng đã hoàn thành (COMPLETED) hoặc đã hủy (CANCELLED)
+                          disabled={o.status === "COMPLETED" || o.status === "CANCELLED"}
+                          className={`block w-full appearance-none rounded-full px-4 py-1.5 text-sm font-bold shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors ${ORDER_STATUSES[o.status]?.color || 'bg-gray-100 text-gray-800'} ${["COMPLETED", "CANCELLED"].includes(o.status) ? 'cursor-not-allowed opacity-70' : ''}`}
                         >
                           {Object.entries(ORDER_STATUSES).map(([key, { label }]) => (
                             <option key={key} value={key} className="bg-white text-gray-800">

@@ -1,9 +1,15 @@
 import { CheckCircle, Home, ShoppingBag } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import Header from "../../components/layout/Header/Header";
 
 function OrderSuccessPage() {
-  const orderCode = "TB" + Math.floor(Math.random() * 1000000);
+  const location = useLocation();
+  
+  // Nhận object đơn hàng được truyền từ trang Checkout (chứa id thực tế từ database)
+  const order = (location.state as { order?: { id: number | string; total?: number } })?.order;
+
+  // Nếu không có state truyền qua (người dùng gõ trực tiếp URL), hiển thị mã mặc định hoặc thông báo
+  const displayId = order?.id ? `#${order.id}` : "Đang cập nhật...";
 
   return (
     <>
@@ -24,9 +30,10 @@ function OrderSuccessPage() {
           </p>
 
           <div className="mt-8 w-full rounded-2xl bg-white p-6 shadow-sm">
-            <p className="text-sm text-gray-500">Mã đơn hàng</p>
+            <p className="text-sm text-gray-500">Mã đơn hàng hệ thống</p>
+            {/* Hiển thị chính xác mã ID thực tế trùng khớp với trang quản lý của Admin */}
             <p className="mt-2 text-2xl font-extrabold text-blue-700">
-              {orderCode}
+              {displayId}
             </p>
           </div>
 

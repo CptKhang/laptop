@@ -5,6 +5,8 @@ import {
   Body,
   UseGuards,
   Request,
+  Delete,
+  Param, // 👈 Nhớ kiểm tra đã import Param chưa nhé
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -32,5 +34,12 @@ export class UsersController {
   @Roles(Role.ADMIN)
   findAll() {
     return this.usersService.findAll();
+  }
+
+  // ✅ Đã thêm đúng hàm xóa user và phân quyền ADMIN
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  remove(@Param('id') id: string) {
+    return this.usersService.remove(+id);
   }
 }

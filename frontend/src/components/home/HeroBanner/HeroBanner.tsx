@@ -34,8 +34,8 @@ function HeroBanner() {
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-blue-300/30 blur-3xl" />
               <img
-                src="https://cdn.tgdd.vn/Products/Images/44/309016/asus-tuf-gaming-f15-fx507zc4-i5-hn074w-1-750x500.jpg"
-                alt="Laptop Gaming"
+                src=""
+                alt=""
                 className="relative z-10 w-[520px] rounded-xl drop-shadow-2xl"
               />
             </div>

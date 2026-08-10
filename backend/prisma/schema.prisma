@@ -80,6 +80,7 @@ model Product {
   price       Decimal     @db.Decimal(19, 4)
   stock       Int         @default(0)
   image       String
+  isActive    Boolean     @default(true) // 👈 Thêm trường này để đánh dấu Đang kinh doanh / Ngừng kinh doanh
   cpu         String?
   ram         String?
   storage     String?

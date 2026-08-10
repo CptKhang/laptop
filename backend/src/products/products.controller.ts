@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Req, Optional } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
@@ -13,8 +13,10 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
-  findAll(@Query() query: ProductQueryDto) {
-    return this.productsService.findAll(query);
+  findAll(@Query() query: ProductQueryDto, @Req() req: any) {
+    // Lấy role của người dùng nếu đã đăng nhập (nếu khách vãng lai thì req.user không có)
+    const userRole = req.user?.role;
+    return this.productsService.findAll(query, userRole);
   }
 
   @Get(":id")
@@ -34,6 +36,13 @@ export class ProductsController {
   @Roles(Role.ADMIN)
   update(@Param("id") id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(+id, dto);
+  }
+
+  @Patch(":id/status")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  updateStatus(@Param("id") id: string, @Body("isActive") isActive: boolean) {
+    return this.productsService.updateStatus(+id, isActive);
   }
 
   @Delete(":id")

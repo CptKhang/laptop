@@ -6,10 +6,10 @@ type UserDetailType = {
   id: number | string;
   fullName: string;
   email: string;
-  phone?: string;     // Thêm số điện thoại
-  address?: string;   // Thêm địa chỉ
+  phone?: string;     // Số điện thoại
+  address?: string;   // Địa chỉ
   role: string;
-  createdAt?: string; // Thêm ngày tạo
+  createdAt?: string; // Ngày tạo
 };
 
 function UserDetail() {
@@ -27,7 +27,10 @@ function UserDetail() {
     try {
       await api.delete(`/users/${user.id}`);
       alert("Xóa người dùng thành công!");
-      navigate(-1);
+      
+      // Điều hướng về trang quản lý người dùng
+      navigate("/admin/users", { replace: true });
+      
     } catch (err: any) {
       console.error("Lỗi khi xóa người dùng:", err);
       const errorMessage = err.response?.data?.message || "Không thể xóa người dùng này.";
