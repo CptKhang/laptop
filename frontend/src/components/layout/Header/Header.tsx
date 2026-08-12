@@ -6,15 +6,18 @@ const Header: React.FC = () => {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  
-  // State lưu danh sách categories lấy từ database
   const [categories, setCategories] = useState<any[]>([]);
+
+  // 🔴 ĐIỂM NGHẼN KIẾN TRÚC Ở ĐÂY:
+  // Tạm thời tôi dùng useState để bạn thấy giao diện chấm đỏ.
+  // Nhưng sau này, biến này BẮT BUỘC phải được lấy từ Context API hoặc Redux.
+  // Ví dụ: const { cartCount } = useCart();
+  const [cartCount, setCartCount] = useState(3); // Giả sử đang có 3 sản phẩm
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     setIsLoggedIn(!!token);
 
-    // Gọi API lấy danh mục thực tế từ backend, đã cắt bỏ API gọi brands dư thừa
     const fetchMenuData = async () => {
       try {
         const catRes = await api.get("/categories");
@@ -62,7 +65,7 @@ const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Menu động: Tự động render danh mục từ Database, đã dọn sạch rác hardcode */}
+        {/* Menu động */}
         <nav className="hidden lg:flex items-center gap-6 text-gray-600 font-medium text-sm">
           {categories.map((cat) => (
             <Link 
@@ -81,8 +84,15 @@ const Header: React.FC = () => {
             🔔
           </button>
           
+          {/* KHỐI GIỎ HÀNG ĐÃ ĐƯỢC CẬP NHẬT UI CHẤM ĐỎ */}
           <Link to="/cart" className="text-gray-500 hover:text-blue-700 transition text-xl relative flex items-center">
             🛒
+            {/* Logic: Chỉ hiển thị chấm đỏ khi số lượng > 0 */}
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+                {cartCount > 99 ? '99+' : cartCount}
+              </span>
+            )}
           </Link>
 
           {isLoggedIn ? (
