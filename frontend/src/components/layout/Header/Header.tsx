@@ -7,23 +7,18 @@ const Header: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   
-  // State lưu danh sách categories và brands lấy từ database
+  // State lưu danh sách categories lấy từ database
   const [categories, setCategories] = useState<any[]>([]);
-  const [brands, setBrands] = useState<any[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem("access_token");
     setIsLoggedIn(!!token);
 
-    // Gọi API lấy danh mục và thương hiệu thực tế từ backend theo api.md
+    // Gọi API lấy danh mục thực tế từ backend, đã cắt bỏ API gọi brands dư thừa
     const fetchMenuData = async () => {
       try {
-        const [catRes, brandRes] = await Promise.all([
-          api.get("/categories"),
-          api.get("/brands")
-        ]);
+        const catRes = await api.get("/categories");
         setCategories(catRes.data || []);
-        setBrands(brandRes.data || []);
       } catch (err) {
         console.error("Lỗi tải dữ liệu menu:", err);
       }
@@ -67,7 +62,7 @@ const Header: React.FC = () => {
           </div>
         </div>
 
-        {/* Menu động: Tự động render danh mục từ Database */}
+        {/* Menu động: Tự động render danh mục từ Database, đã dọn sạch rác hardcode */}
         <nav className="hidden lg:flex items-center gap-6 text-gray-600 font-medium text-sm">
           {categories.map((cat) => (
             <Link 
@@ -76,17 +71,6 @@ const Header: React.FC = () => {
               className="hover:text-blue-700 transition"
             >
               {cat.name}
-            </Link>
-          ))}
-
-          {/* Hiển thị một vài brand tiêu biểu hoặc để người dùng thấy */}
-          {brands.slice(0, 2).map((brand) => (
-            <Link 
-              key={brand.id} 
-              to={`/products?brandId=${brand.id}`} 
-              className="hover:text-blue-700 font-bold text-blue-700 transition"
-            >
-              {brand.name}
             </Link>
           ))}
         </nav>
