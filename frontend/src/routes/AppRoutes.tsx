@@ -9,6 +9,7 @@ import RegisterPage from "../pages/Register/RegisterPage";
 import OrderSuccessPage from "../pages/OrderSuccess/OrderSuccessPage";
 import AdminCategoriesPage from "../admin/pages/Categories";
 import UserDetail from "../admin/pages/UserDetail";
+import MockMomoPage from "../pages/MockMomoPage";
 
 // BỔ SUNG IMPORT TRANG PROFILE
 // Lưu ý: Hãy đảm bảo đường dẫn import này khớp với vị trí bạn đã lưu file ProfilePage.tsx
@@ -25,6 +26,7 @@ import Users from "../admin/pages/Users";
 import AdminBrandsPage from "../admin/pages/Brands";
 
 
+
 function AppRoutes() {
   return (
     <BrowserRouter>
@@ -38,6 +40,7 @@ function AppRoutes() {
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/order-success" element={<OrderSuccessPage />} />
+        <Route path="/mock-momo" element={<MockMomoPage />} />
         
         {/* ✅ MỞ KHÓA ROUTE CHO PROFILE */}
         <Route path="/profile" element={<ProfilePage />} />

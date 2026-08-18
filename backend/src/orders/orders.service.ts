@@ -286,4 +286,45 @@ export class OrdersService {
       });
     });
   }
+
+  // ===================================================================
+  // ĐIỂM NGHẼN CUỐI CÙNG: HÀM NÀY DÀNH RIÊNG CHO WEBHOOK THANH TOÁN MOMO
+  // ===================================================================
+  async updatePaymentStatus(orderId: number, status: 'PAID' | 'FAILED') {
+    return this.prisma.$transaction(async (tx) => {
+      // 1. Kiểm tra đơn hàng tồn tại
+      const order = await tx.order.findUnique({ where: { id: orderId } });
+      if (!order) throw new NotFoundException('Đơn hàng không tồn tại');
+
+      // 2. Chống lặp (Idempotency check): Tránh việc MoMo gọi Webhook nhiều lần làm ghi đè dữ liệu
+      if (order.paymentStatus === status) {
+        console.log(`Đơn ${orderId} đã ở trạng thái ${status}, bỏ qua.`);
+        return order;
+      }
+
+      // 3. Cập nhật PaymentStatus và mã giao dịch
+      const updatedOrder = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          paymentStatus: status, 
+          transactionId: status === 'PAID' ? 'MOMO_SUCCESS' : null, 
+        },
+      });
+
+      // 4. Nếu thanh toán thành công, ghi log lịch sử audit
+      if (status === 'PAID') {
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: orderId,
+            fromStatus: order.status,
+            toStatus: order.status, // Giữ nguyên trạng thái vận chuyển, chỉ ghi nhận thao tác tiền
+            actorUserId: order.userId, // Chính khách hàng là người thực hiện thanh toán
+            reason: 'Khách hàng thanh toán MoMo thành công',
+          },
+        });
+      }
+
+      return updatedOrder;
+    });
+  }
 }
