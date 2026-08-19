@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, NotFoundException, BadRequestException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateCategoryDto } from "./dto/create-category.dto";
 
@@ -20,8 +20,27 @@ export class CategoriesService {
   }
 
   async remove(id: number) {
-    await this.findOne(id);
-    return this.prisma.category.delete({ where: { id } });
+    // 1. Tìm Category và include thêm Products để đếm
+    const category = await this.prisma.category.findUnique({
+      where: { id },
+      include: { products: true }, // Móc nối bảng products
+    });
+  
+    if (!category) {
+      throw new NotFoundException("Không tìm thấy danh mục này");
+    }
+  
+    // 2. Chặn đứng hành động xóa nếu danh mục đang chứa sản phẩm
+    if (category.products.length > 0) {
+      throw new BadRequestException(
+        `Không thể xóa! Danh mục này đang chứa ${category.products.length} sản phẩm. Hãy xóa hoặc chuyển danh mục cho các sản phẩm đó trước.`
+      );
+    }
+  
+    // 3. Xóa an toàn khi mảng products rỗng
+    return this.prisma.category.delete({
+      where: { id },
+    });
   }
 
   private async findOne(id: number) {

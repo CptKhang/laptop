@@ -45,11 +45,18 @@ function Products() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState(DEFAULT_FORM_DATA);
+  
+  // 1. THÊM STATE ĐỂ QUẢN LÝ PHÂN TRANG
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  const loadProducts = () => {
-    api.get("/products")
+  // 2. CẬP NHẬT HÀM LOAD PRODUCTS ĐỂ GỬI VÀ NHẬN PARAM PHÂN TRANG
+  const loadProducts = (page: number) => {
+    api.get(`/products?page=${page}&limit=12`)
       .then((res) => {
         setProducts(res.data && Array.isArray(res.data.items) ? res.data.items : []);
+        // Hứng dữ liệu tổng số trang từ backend trả về
+        setTotalPages(res.data?.totalPages || 1);
       })
       .catch((err) => {
         console.error("Lỗi lấy danh sách sản phẩm:", err);
@@ -65,11 +72,15 @@ function Products() {
     api.get("/brands").then((res) => setBrands(res.data || [])).catch(() => {});
   };
 
+  // 3. TÁCH USEEFFECT: Một cái chạy 1 lần khi load trang, một cái chạy mỗi khi chuyển trang
   useEffect(() => {
-    loadProducts();
     loadCategories();
     loadBrands();
   }, []);
+
+  useEffect(() => {
+    loadProducts(currentPage);
+  }, [currentPage]);
 
   const resetForm = () => {
     setFormData(DEFAULT_FORM_DATA);
@@ -112,7 +123,7 @@ function Products() {
       alert(editingId ? "Cập nhật sản phẩm thành công!" : "Thêm sản phẩm mới thành công!");
       setShowForm(false);
       resetForm();
-      loadProducts();
+      loadProducts(currentPage); // Gọi lại trang hiện tại sau khi sửa/thêm
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || "Không có quyền thực hiện";
       alert(`Lỗi Backend:\n${Array.isArray(errorMessage) ? errorMessage.join("\n") : errorMessage}`);
@@ -127,7 +138,7 @@ function Products() {
       try {
         await api.patch(`/products/${id}/status`, { isActive: !currentStatus });
         alert("Cập nhật trạng thái sản phẩm thành công!");
-        loadProducts();
+        loadProducts(currentPage);
       } catch (err: any) {
         const errorMessage = err.response?.data?.message || "Không thể thay đổi trạng thái sản phẩm.";
         alert(`Thất bại:\n${Array.isArray(errorMessage) ? errorMessage.join("\n") : errorMessage}`);
@@ -135,14 +146,13 @@ function Products() {
     }
   };
 
-  // 🛠 HÀM XỬ LÝ XÓA SẢN PHẨM
   const handleDelete = async (e: React.MouseEvent, id: number, name: string) => {
     e.stopPropagation();
     if (window.confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn sản phẩm "${name}"?`)) {
       try {
         await api.delete(`/products/${id}`);
         alert("Xóa sản phẩm thành công!");
-        loadProducts();
+        loadProducts(currentPage);
       } catch (err: any) {
         console.error("Lỗi xóa sản phẩm:", err);
         const errorMessage = err.response?.data?.message || "Không thể xóa sản phẩm này vì đã có trong đơn hàng.";
@@ -299,6 +309,31 @@ function Products() {
             })}
           </tbody>
         </table>
+
+        {/* 4. GIAO DIỆN COMPONENT PHÂN TRANG */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t flex justify-between items-center bg-gray-50/50">
+            <span className="text-sm font-medium text-gray-600">
+              Đang hiển thị trang <strong className="text-gray-900">{currentPage}</strong> / {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Trang trước
+              </button>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >
+                Trang tiếp
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
