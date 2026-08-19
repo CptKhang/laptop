@@ -11,7 +11,7 @@ export class PaymentService {
     // ----------------------------------------------------
     // CHẾ ĐỘ MOCK (THANH TOÁN NỘI BỘ): Bỏ qua gọi MoMo thật
     // ----------------------------------------------------
-    const isMockMode = false; // Bật cờ giả lập để test nội bộ
+    const isMockMode = true; // Bật cờ giả lập để test nội bộ
 
     if (isMockMode) {
       console.log(`🛠️ [MOCK PAYMENT] Đang tạo link giả lập cho đơn hàng #${orderId} với số tiền ${amount}đ`);
