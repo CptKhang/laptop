@@ -10,6 +10,13 @@ import Header from "../../components/layout/Header/Header";
 // 1. Import Tầng Nền tảng
 import { api } from "../../utils/api";
 
+type UserProfile = {
+  email: string;
+  fullName: string;
+  phone: string | null;
+  address: string | null;
+};
+
 function CheckoutPage() {
   const navigate = useNavigate();
   const [cartItems, setCartItems] = useState<any[]>([]);
@@ -20,35 +27,43 @@ function CheckoutPage() {
   // KHỐI LOGIC MỚI: QUẢN TRỊ TRẠNG THÁI THÔNG TIN GIAO HÀNG
   // ==========================================
   
-  // 1. Master Data: Giả lập lấy thông tin từ Profile
-  const currentUser = {
-    email: "lekhang@gmail.com",
-    fullName: "Khang",
-    phone: "0982456345",
-    address: ""
-  };
+  // 1. Master Data: Lấy thông tin từ Profile của người dùng đã đăng nhập
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
 
   // 2. State cờ hiệu chuyển đổi người nhận
   const [isBuyingForSomeoneElse, setIsBuyingForSomeoneElse] = useState(false);
 
-  // 3. Transactional Data: Khởi tạo với dữ liệu gốc của User
+  // 3. Transactional Data: Khởi tạo rỗng và đồng bộ từ Profile khi tải xong
   const [formData, setFormData] = useState({
-    fullName: currentUser.fullName,
-    phone: currentUser.phone,
-    address: currentUser.address,
+    fullName: "",
+    phone: "",
+    address: "",
     note: "",
   });
 
-  // 4. Trigger đồng bộ dữ liệu khi bật/tắt nút Toggle
   useEffect(() => {
-    if (!isBuyingForSomeoneElse) {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await api.get("/users/me");
+        setCurrentUser(response.data);
+      } catch (err) {
+        console.error("Lỗi tải thông tin người dùng:", err);
+      }
+    };
+
+    fetchCurrentUser();
+  }, []);
+
+  // 4. Trigger đồng bộ dữ liệu khi bật/tắt nút Toggle hoặc Profile tải xong
+  useEffect(() => {
+    if (!isBuyingForSomeoneElse && currentUser) {
       setFormData((prev) => ({
         ...prev,
         fullName: currentUser.fullName,
-        phone: currentUser.phone,
-        address: currentUser.address,
+        phone: currentUser.phone ?? "",
+        address: currentUser.address ?? "",
       }));
-    } else {
+    } else if (isBuyingForSomeoneElse) {
       setFormData((prev) => ({
         ...prev,
         fullName: "",
@@ -56,7 +71,7 @@ function CheckoutPage() {
         address: "",
       }));
     }
-  }, [isBuyingForSomeoneElse]);
+  }, [currentUser, isBuyingForSomeoneElse]);
 
   // 5. Chốt chặn Validation
   const isFormValid = 
@@ -185,7 +200,7 @@ function CheckoutPage() {
                 <div className="mb-5">
                   <label className="block text-sm font-medium text-gray-600 mb-2">Địa chỉ Email (Không thể thay đổi)</label>
                   <div className="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-500">
-                    ✉️ {currentUser.email}
+                    ✉️ {currentUser?.email || "Đang tải thông tin..."}
                   </div>
                 </div>
 

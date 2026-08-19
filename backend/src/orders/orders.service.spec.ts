@@ -32,6 +32,9 @@ describe('OrdersService', () => {
       create: jest.fn(),
       findMany: jest.fn(),
     },
+    cartItem: {
+      deleteMany: jest.fn(),
+    },
   };
   const prisma = {
     product: {
@@ -65,6 +68,7 @@ describe('OrdersService', () => {
     tx.order.create.mockResolvedValue({
       id: 10,
       status: OrderStatus.PENDING,
+      paymentMethod: PaymentMethod.COD,
     } as never);
     tx.orderStatusHistory.create.mockResolvedValue({ id: 1 } as never);
     prisma.order.update.mockResolvedValue({ id: 5 } as never);
@@ -102,6 +106,7 @@ describe('OrdersService', () => {
       tx.order.create.mockResolvedValue({
         id: 10,
         status: OrderStatus.PENDING,
+        paymentMethod: PaymentMethod.COD,
       } as never);
       tx.orderStatusHistory.create.mockResolvedValue({ id: 1 } as never);
 
@@ -136,9 +141,27 @@ describe('OrdersService', () => {
           actorUserId: 1,
         },
       });
+      expect(tx.cartItem.deleteMany).toHaveBeenCalledWith({
+        where: { cart: { userId: 1 } },
+      });
       expect(result).toEqual(
         expect.objectContaining({ id: 10, orderCode: 'TB10' }),
       );
+    });
+
+    it('keeps the cart while waiting for MoMo payment confirmation', async () => {
+      tx.order.create.mockResolvedValue({
+        id: 10,
+        status: OrderStatus.PENDING,
+        paymentMethod: PaymentMethod.MOMO,
+      } as never);
+
+      await service.create(1, {
+        ...validOrderDto,
+        paymentMethod: PaymentMethod.MOMO,
+      } as never);
+
+      expect(tx.cartItem.deleteMany).not.toHaveBeenCalled();
     });
 
     it('rejects missing products', async () => {
@@ -165,6 +188,68 @@ describe('OrdersService', () => {
         service.create(1, validOrderDto as never),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(tx.order.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('payment status updates', () => {
+    it('clears the order owner cart after a successful MoMo payment', async () => {
+      tx.order.findUnique.mockResolvedValue({
+        id: 10,
+        userId: 1,
+        status: OrderStatus.PENDING,
+        paymentStatus: 'UNPAID',
+      } as never);
+      tx.order.update.mockResolvedValue({
+        id: 10,
+        paymentStatus: 'PAID',
+      } as never);
+
+      await service.updatePaymentStatus(10, 'PAID');
+
+      expect(tx.order.update).toHaveBeenCalledWith({
+        where: { id: 10 },
+        data: {
+          paymentStatus: 'PAID',
+          transactionId: 'MOMO_SUCCESS',
+        },
+      });
+      expect(tx.cartItem.deleteMany).toHaveBeenCalledWith({
+        where: { cart: { userId: 1 } },
+      });
+    });
+
+    it('does not clear the cart for a failed payment', async () => {
+      tx.order.findUnique.mockResolvedValue({
+        id: 10,
+        userId: 1,
+        status: OrderStatus.PENDING,
+        paymentStatus: 'UNPAID',
+      } as never);
+      tx.order.update.mockResolvedValue({
+        id: 10,
+        paymentStatus: 'FAILED',
+      } as never);
+
+      await service.updatePaymentStatus(10, 'FAILED');
+
+      expect(tx.cartItem.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('does not clear the cart again for a duplicate successful payment', async () => {
+      const paidOrder = {
+        id: 10,
+        userId: 1,
+        status: OrderStatus.PENDING,
+        paymentStatus: 'PAID',
+      };
+      tx.order.findUnique.mockResolvedValue(paidOrder as never);
+
+      await expect(service.updatePaymentStatus(10, 'PAID')).resolves.toEqual(
+        paidOrder,
+      );
+
+      expect(tx.order.update).not.toHaveBeenCalled();
+      expect(tx.cartItem.deleteMany).not.toHaveBeenCalled();
     });
   });
 

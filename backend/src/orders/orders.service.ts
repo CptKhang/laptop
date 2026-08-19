@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { OrderStatus, Prisma, Role } from '@prisma/client';
+import { OrderStatus, PaymentMethod, Prisma, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CancelOrderDto } from './dto/cancel-order.dto';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -90,6 +90,12 @@ export class OrdersService {
           actorUserId: userId,
         },
       });
+
+      if (order.paymentMethod === PaymentMethod.COD) {
+        await tx.cartItem.deleteMany({
+          where: { cart: { userId } },
+        });
+      }
 
       return {
         ...order,
@@ -321,6 +327,10 @@ export class OrdersService {
             actorUserId: order.userId, // Chính khách hàng là người thực hiện thanh toán
             reason: 'Khách hàng thanh toán MoMo thành công',
           },
+        });
+
+        await tx.cartItem.deleteMany({
+          where: { cart: { userId: order.userId } },
         });
       }
 
