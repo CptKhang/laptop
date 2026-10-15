@@ -7,79 +7,81 @@ import axios from 'axios';
 export class PaymentService {
   constructor(private readonly configService: ConfigService) {}
 
-  async createMomoTransaction(orderId: string, amount: string) {
-    // ----------------------------------------------------
-    // CHẾ ĐỘ MOCK (THANH TOÁN NỘI BỘ): Bỏ qua gọi MoMo thật
-    // ----------------------------------------------------
-    const isMockMode = true; // Bật cờ giả lập để test nội bộ
+  async createMomoTransaction(orderIdInput: string, amountInput: string | number) {
+    // --- SỬ DỤNG BỘ KEY CHUẨN ĐÃ TEST THÀNH CÔNG ---
+    const partnerCode = "MOMO";
+    const accessKey = "F8BBA842ECF85";
+    const secretKey = "K951B6PE1waDMi640xX08PD3vg6EkVlz";
+    const paymentUrl = "https://test-payment.momo.vn/v2/gateway/api/create";
 
-    if (isMockMode) {
-      console.log(`🛠️ [MOCK PAYMENT] Đang tạo link giả lập cho đơn hàng #${orderId} với số tiền ${amount}đ`);
-      const payUrl = `http://localhost:5173/mock-momo?orderId=${orderId}&amount=${amount}`;
-      return {
-        payUrl,
-        resultCode: 0,
-        message: "Tạo link giả lập thành công",
-      };
-    }
+    const redirectUrl = this.configService.get<string>('MOMO_REDIRECT_URL')?.trim().replace(/\r/g, '') || "http://localhost:5173/orderPage"; 
+    const ipnUrl = this.configService.get<string>('MOMO_IPN_URL')?.trim().replace(/\r/g, ''); 
 
-    // --- CODE GỐC GỌI MOMO THẬT (ĐÃ ĐƯỢC GIỮ LẠI ĐỂ SỬ DỤNG SAU NÀY) ---
-    const partnerCode = this.configService.get<string>('MOMO_PARTNER_CODE');
-    const accessKey = this.configService.get<string>('MOMO_ACCESS_KEY');
-    const secretKey = this.configService.get<string>('MOMO_SECRET_KEY');
-    const paymentUrl = this.configService.get<string>('MOMO_PAYMENT_URL');
-
-    if (!partnerCode || !accessKey || !secretKey || !paymentUrl) {
-      throw new InternalServerErrorException('Hệ thống thiếu cấu hình MoMo. Vui lòng kiểm tra lại file .env');
-    }
-
-    const redirectUrl = this.configService.get<string>('MOMO_REDIRECT_URL'); 
-    const ipnUrl = this.configService.get<string>('MOMO_IPN_URL'); 
-
-    if (!redirectUrl || !ipnUrl) {
-      throw new InternalServerErrorException('Thiếu cấu hình MOMO_REDIRECT_URL hoặc MOMO_IPN_URL trong file .env');
+    if (!ipnUrl) {
+      throw new InternalServerErrorException('Thiếu cấu hình MOMO_IPN_URL trong file .env');
     }
     
+    const amountNumber = Number(amountInput);
+    if (!amountNumber || amountNumber <= 0) {
+      throw new InternalServerErrorException('Số tiền thanh toán không hợp lệ');
+    }
+
+    const amount = String(Math.round(amountNumber));
+    const orderId = `${orderIdInput}_${Date.now()}`;
+    const requestId = orderId;
     const requestType = 'payWithMethod';
     const extraData = '';
-    const orderInfo = `Thanh toán đơn hàng ${orderId}`;
-    const requestId = partnerCode + new Date().getTime() + "req";
+    const orderInfo = "pay with MoMo";
+    const lang = "vi";
+    const autoCapture = true;
+    const orderGroupId = "";
 
-    const rawDataObj = {
-      accessKey,
-      amount,
-      extraData,
-      ipnUrl,
-      orderId,
-      orderInfo,
-      partnerCode,
-      redirectUrl,
-      requestId,
-      requestType,
-    };
+    // 1. Ghép chuỗi rawSignature chính xác tuyệt đối theo thứ tự alphabet
+    const rawSignature = 
+      `accessKey=${accessKey}` +
+      `&amount=${amount}` +
+      `&extraData=${extraData}` +
+      `&ipnUrl=${ipnUrl}` +
+      `&orderId=${orderId}` +
+      `&orderInfo=${orderInfo}` +
+      `&partnerCode=${partnerCode}` +
+      `&redirectUrl=${redirectUrl}` +
+      `&requestId=${requestId}` +
+      `&requestType=${requestType}`;
 
-    const rawSignature = Object.keys(rawDataObj)
-      .sort()
-      .map((key) => `${key}=${rawDataObj[key]}`)
-      .join('&');
-    
+    // 2. Tạo chữ ký HMAC SHA256
     const signature = crypto
       .createHmac('sha256', secretKey)
       .update(rawSignature)
       .digest('hex');
 
+    // 3. Payload gửi sang MoMo
     const requestBody = {
-      ...rawDataObj,
-      partnerName: "BeeTech",
+      partnerCode,
+      partnerName: "Test",
       storeId: "MomoTestStore",
-      lang: 'vi',
-      autoCapture: true,
-      orderGroupId: '',
+      requestId,
+      amount,
+      orderId,
+      orderInfo,
+      redirectUrl,
+      ipnUrl,
+      lang,
+      requestType,
+      autoCapture,
+      extraData,
+      orderGroupId,
       signature,
     };
 
     try {
-      const response = await axios.post(paymentUrl, requestBody);
+      console.log("📤 Gửi request sang MoMo với orderId:", orderId);
+      const response = await axios.post(paymentUrl, requestBody, {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      console.log("📥 MOMO RESULT:", response.data);
       return response.data; 
     } catch (error: any) {
       console.error("❌ Lỗi giao tiếp MoMo chi tiết:", error.response?.data || error.message);
@@ -91,13 +93,8 @@ export class PaymentService {
   // LỚP KHIÊN BẢO MẬT: KIỂM TRA CHỮ KÝ WEBHOOK TỪ MOMO
   // ===================================================================
   verifyMomoIpnSignature(ipnData: any): boolean {
-    const accessKey = this.configService.get<string>('MOMO_ACCESS_KEY');
-    const secretKey = this.configService.get<string>('MOMO_SECRET_KEY');
-
-    if (!accessKey || !secretKey) {
-        console.error('Lỗi cấu hình: Không tìm thấy Access Key hoặc Secret Key để kiểm tra chữ ký.');
-        return false;
-    }
+    const accessKey = "F8BBA842ECF85";
+    const secretKey = "K951B6PE1waDMi640xX08PD3vg6EkVlz";
 
     const {
       partnerCode,
@@ -117,24 +114,34 @@ export class PaymentService {
 
     const ipnObj = {
       accessKey,
-      amount,
-      extraData,
-      message,
-      orderId,
-      orderInfo,
-      orderType,
+      amount: String(amount),
+      extraData: extraData || '',
+      message: message || '',
+      orderId: String(orderId),
+      orderInfo: orderInfo || '',
+      orderType: orderType || '',
       partnerCode,
-      payType,
+      payType: payType || '',
       requestId,
-      responseTime,
-      resultCode,
-      transId,
+      responseTime: String(responseTime),
+      resultCode: String(resultCode),
+      transId: String(transId),
     };
 
-    const rawSignature = Object.keys(ipnObj)
-      .sort()
-      .map((key) => `${key}=${ipnObj[key]}`)
-      .join('&');
+    const rawSignature = 
+      `accessKey=${ipnObj.accessKey}` +
+      `&amount=${ipnObj.amount}` +
+      `&extraData=${ipnObj.extraData}` +
+      `&message=${ipnObj.message}` +
+      `&orderInfo=${ipnObj.orderInfo}` +
+      `&orderId=${ipnObj.orderId}` +
+      `&orderType=${ipnObj.orderType}` +
+      `&partnerCode=${ipnObj.partnerCode}` +
+      `&payType=${ipnObj.payType}` +
+      `&requestId=${ipnObj.requestId}` +
+      `&responseTime=${ipnObj.responseTime}` +
+      `&resultCode=${ipnObj.resultCode}` +
+      `&transId=${ipnObj.transId}`;
 
     const generatedSignature = crypto
       .createHmac('sha256', secretKey)
